@@ -23,5 +23,4 @@ public interface EventRepository extends
         bindings.bind(root.eventStartDatetime).first(ComparableExpression::goe);
         bindings.bind(root.eventEndDatetime).first(ComparableExpression::loe);
     }
-
 }
