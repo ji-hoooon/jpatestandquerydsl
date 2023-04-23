@@ -4,13 +4,17 @@ import com.querydsl.core.types.dsl.ComparableExpression;
 import com.querydsl.core.types.dsl.StringExpression;
 import com.uno.getinline.domain.Event;
 import com.uno.getinline.domain.QEvent;
+import com.uno.getinline.repository.querydsl.EventRepositoryCustom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.data.querydsl.binding.QuerydslBinderCustomizer;
 import org.springframework.data.querydsl.binding.QuerydslBindings;
 
+//구현체로 JpaRepository가 SimpleJpaRepository를 주입해준다.
 public interface EventRepository extends
         JpaRepository<Event, Long>,
+        //직접 작성한 쿼리DSL를 상속
+        EventRepositoryCustom,
         QuerydslPredicateExecutor<Event>,
         QuerydslBinderCustomizer<QEvent> {
 

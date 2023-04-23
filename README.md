@@ -157,6 +157,65 @@
     }
    ```
 2. 쿼리 작성
+   - DTO 만들기 
+     - 이벤트 엔티티가 플레이스 엔티티를 직접 의존하는 기존 형태
+     - DTO가 아닌 사용할 필드에만 의존하는 형태로 전환
+  ```java
+  public record EventResponse(
+       Long id,
+       PlaceDto place,
+       String eventName,
+       EventStatus eventStatus,
+       LocalDateTime eventStartDatetime,
+       LocalDateTime eventEndDatetime,
+       Integer currentNumberOfPeople,
+       Integer capacity,
+       String memo
+  )
+  ```
+  ```java
+  public record EventViewResponse(
+    Long id,
+    String placeName,
+    String eventName,
+    EventStatus eventStatus,
+    LocalDateTime eventStartDatetime,
+    LocalDateTime eventEndDatetime,
+    Integer currentNumberOfPeople,
+    Integer capacity,
+    String memo
+  )
+  ```
+  1. QueryDSL를 이용한 구현체를 작성
+     - QuerydslRespositorySupport 상속
+     - 해당 리포지토리의 도메인을 전달한 부모의 생성자 호출
+  2. DTO를 반환하는 메서드 오버라이딩
+     - 큐클래스를 이용해 직접 구현
+     - 스프링 데이터 JPA가 지원하는 JPQLQuery 이용 (from으로 시작 (문법))
+     - JPQL쿼리를 이용해 event 엔티티의 필드와 place에 있는 필드를 가져온다. (이벤트만 가져올때는 select 생략 가능)
+  3. 직접 커스텀 프로젝션 하는 방법
+     1. setter 주입
+     2. 생성자 주입
+     3. 쿼리 프로젝션 어노테이션 사용
+  4. 생성자 주입을 이용해 작성
+     - 동적으로 where 절을 추가한다.
+     - where(큐클래스.검색할 이름.검색할 방법.검색할 이름)
+  5. where절로 만든 검색 조건을 완성시킨다.
+     - 페이지 방식으로 변환하기 위한 파라미터 : 리스트, 페이징 정보, 페이징 처리하지 않는 총 사이즈 (쿼리의 카운트 쿼리)
+     - PageImpl<>(events, pageable, query.fetchCount());
+  6. 직접 작성한 쿼리DSL를 상속
+  7. EventRepository를 테스트
+     - Pageable 요청 부분과 응답부분이 별도로 구현되어있다.
+  8. properties 설정으로 sql 출력하고 sql을 가독성 좋게 출력
+     - spring.jpa.show-sql=true
+     - spring.jpa.properties.hibernate.format_sql=true
+
 3. 서비스 로직에 적용
+
+
+## 고민
+1. //eq? equals? 뭔차이지 
+query.where(event.eventStatus.eq(eventStatus));
+query.where(event.eventStatus.equals(eventStatus));
 
      

@@ -6,23 +6,29 @@ import com.uno.getinline.constant.EventStatus;
 import com.uno.getinline.constant.PlaceType;
 import com.uno.getinline.domain.Event;
 import com.uno.getinline.domain.Place;
+import com.uno.getinline.dto.EventViewResponse;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("DB-이벤트")
 @DataJpaTest
 class EventRepositoryTest {
     //DataJpaTest 기본 세팅
-    //: 의존성 주입 방법 중 생성자 주입 + @Autorwired
+    //: 의존성 주입 방법 중 생성자 주입 시에 @Autowired 필수
     private final EventRepository sut;
     private final TestEntityManager testEntityManager;
 
@@ -105,8 +111,41 @@ class EventRepositoryTest {
         Iterable<Event> events = sut.findAll(new BooleanBuilder());
 
         //then
-        Assertions.assertThat(events).hasSize(7);
+        assertThat(events).hasSize(7);
 
     }
+
+
+    @Test
+    public void givenSearchParams_wehnFindingEventViewResponse_thenReturnsEventViewResponsePage_test() throws Exception{
+        //given
+        //:Data.sql에 테스트할 데이터를 추가해놨다.
+
+        //when
+        Page<EventViewResponse> eventPage = sut.findEventViewPageBySearchParams(
+                "배드민턴",
+                "운동1",
+                EventStatus.OPENED,
+                LocalDateTime.of(2021, 1, 1, 0, 0, 0),
+                LocalDateTime.of(2021, 1, 2, 0, 0, 0),
+                //Pageable 요청 부분과 응답부분이 별도로 구현되어있다.
+                PageRequest.of(0, 5)
+        );//일부 일치, 정확히 일치
+
+        //then
+        assertThat(eventPage.getTotalPages()).isEqualTo(1);
+        //총 페이지 수 1
+        assertThat(eventPage.getNumberOfElements()).isEqualTo(1);
+        //현재 페이지에 요소 수 1
+        assertThat(eventPage.getTotalElements()).isEqualTo(1);
+        //총 요소의 수 1
+        assertThat(eventPage.getContent().get(0))
+                .hasFieldOrPropertyWithValue("placeName","서울 배드민턴장")
+                .hasFieldOrPropertyWithValue("eventName","운동1")
+                .hasFieldOrPropertyWithValue("eventStatus",EventStatus.OPENED)
+                .hasFieldOrPropertyWithValue("eventStartDateTime",LocalDateTime.of(2021, 1, 1, 9, 0, 0))
+                .hasFieldOrPropertyWithValue("eventEndDateTime", LocalDateTime.of(2021, 1, 2, 12, 0, 0));
+    }
+
 
 }
