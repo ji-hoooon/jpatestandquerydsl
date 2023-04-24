@@ -55,4 +55,8 @@ public record EventResponse(
         );
     }
 
+    //Custom 만들면서 바뀐 페이징 구성으로 인해 Getter 생성
+    public String getPlaceName(){
+        return this.place().placeName();
+    }
 }
