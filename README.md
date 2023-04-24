@@ -1,6 +1,5 @@
 # Jpa Test와 QueryDSL 학습을 위한 리포지토리
 
-
 ## Spring Data JPA Test
 
 1. Spring Data Jpa Test
@@ -324,6 +323,13 @@ public List<EventDto> getEvents(
         return new ModelAndView("event/index", map);
     }
 ```
+
+
+## Jooq
+1. Jooq 설정
+   - build.gradle
+   - JooqConfig 
+     - JooqAutoConfiguration에서 제공하는 pretty formatting
 
 ## 고민
 1. eq? equals? 뭔차이지 
