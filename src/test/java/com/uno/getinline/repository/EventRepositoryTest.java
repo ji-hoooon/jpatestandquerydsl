@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -29,13 +30,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class EventRepositoryTest {
     //DataJpaTest 기본 세팅
     //: 의존성 주입 방법 중 생성자 주입 시에 @Autowired 필수
-    private final EventRepository sut;
+    private final EventRepository eventRepository;
     private final TestEntityManager testEntityManager;
 
     public EventRepositoryTest(
-            @Autowired EventRepository sut,
+            @Autowired EventRepository eventRepository,
             @Autowired TestEntityManager testEntityManager) {
-        this.sut = sut;
+        this.eventRepository = eventRepository;
         this.testEntityManager = testEntityManager;
     }
 
@@ -89,9 +90,9 @@ class EventRepositoryTest {
     }
 
     //테스트 메서드 기본 세팅
-    @DisplayName("asdf")
+    @DisplayName("기본 테스트")
     @Test
-    public void _test() throws Exception {
+    public void eventDependsPlaceEntity_test() throws Exception {
         //given
         //: 필요한 데이터를 테스트 엔티티매니저로 추가
         //: EventServiceTest에서 만들어둔 더미 오브젝트 복사해와서 사용
@@ -108,21 +109,21 @@ class EventRepositoryTest {
         //when
         //: EventRepository의 QueryPredicateExecutor 테스트
         //인터페이스인 Predicate를 구현한 BooleanBuilder
-        Iterable<Event> events = sut.findAll(new BooleanBuilder());
+        Iterable<Event> events = eventRepository.findAll(new BooleanBuilder());
 
         //then
         assertThat(events).hasSize(7);
 
     }
 
-
+    @DisplayName("이벤트 뷰 데이터를 검색 파라미터와 함께 조회하면, 조건에 맞는 데이터를 페이징 처리하여 리턴한다.")
     @Test
     public void givenSearchParams_wehnFindingEventViewResponse_thenReturnsEventViewResponsePage_test() throws Exception{
         //given
         //:Data.sql에 테스트할 데이터를 추가해놨다.
 
         //when
-        Page<EventViewResponse> eventPage = sut.findEventViewPageBySearchParams(
+        Page<EventViewResponse> eventPage = eventRepository.findEventViewPageBySearchParams(
                 "배드민턴",
                 "운동1",
                 EventStatus.OPENED,
@@ -148,4 +149,60 @@ class EventRepositoryTest {
     }
 
 
+    @DisplayName("이벤트 뷰 데이터 검색어에 따른 조회 결과가 없으면, 빈 데이터를 페이징 정보와 함께 리턴한다.")
+    @Test
+    void givenSearchParams_whenFindingNonexistentEventViewPage_thenReturnsEmptyEventViewResponsePage() {
+        // Given
+
+        // When
+        Page<EventViewResponse> eventPage = eventRepository.findEventViewPageBySearchParams(
+                "없은 장소",
+                "없는 이벤트",
+                null,
+                LocalDateTime.of(1000, 1, 1, 1, 1, 1),
+                LocalDateTime.of(1000, 1, 1, 1, 1, 0),
+                PageRequest.of(0, 5)
+        );
+
+        // Then
+        assertThat(eventPage).hasSize(0);
+    }
+
+    @DisplayName("이벤트 뷰 데이터를 검색 파라미터 없이 페이징 값만 주고 조회하면, 전체 데이터를 페이징 처리하여 리턴한다.")
+    @Test
+    void givenPagingInfoOnly_whenFindingEventViewPage_thenReturnsEventViewResponsePage() {
+        // Given
+
+        // When
+        Page<EventViewResponse> eventPage = eventRepository.findEventViewPageBySearchParams(
+                null,
+                null,
+                null,
+                null,
+                null,
+                PageRequest.of(0, 5)
+        );
+
+        // Then
+        assertThat(eventPage).hasSize(5);
+    }
+
+    @DisplayName("이벤트 뷰 데이터를 페이징 정보 없이 조회하면, 에러를 리턴한다.")
+    @Test
+    void givenNothing_whenFindingEventViewPage_thenThrowsError() {
+        // Given
+
+        // When
+        Throwable t = catchThrowable(() -> eventRepository.findEventViewPageBySearchParams(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+
+        // Then
+        assertThat(t).isInstanceOf(InvalidDataAccessApiUsageException.class);
+    }
 }
