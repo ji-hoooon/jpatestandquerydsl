@@ -206,7 +206,7 @@
   6. 직접 작성한 쿼리DSL를 상속
   7. EventRepository를 테스트
      - Pageable 요청 부분과 응답부분이 별도로 구현되어있다.
-  8. properties 설정으로 sql 출력하고 sql을 가독성 좋게 출력
+  8. properties 설정으로 sql 출력하고 sql을 가독성 좋게 출력                                                                
      - spring.jpa.show-sql=true
      - spring.jpa.properties.hibernate.format_sql=true
 
@@ -214,8 +214,10 @@
 
 
 ## 고민
-1. //eq? equals? 뭔차이지 
-query.where(event.eventStatus.eq(eventStatus));
-query.where(event.eventStatus.equals(eventStatus));
+1. eq? equals? 뭔차이지 
+- query.where(event.eventStatus.eq(eventStatus));
+- query.where(event.eventStatus.equals(eventStatus));
+- 첫 번째 코드는 JPQL에서 사용되는 문법
+- 두 번째 코드는 Java 객체 비교에 사용되는 문법
 
      
