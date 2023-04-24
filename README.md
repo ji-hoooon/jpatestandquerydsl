@@ -330,6 +330,13 @@ public List<EventDto> getEvents(
    - build.gradle
    - JooqConfig 
      - JooqAutoConfiguration에서 제공하는 pretty formatting
+2. QueryDSL하던 동적쿼리 대체
+   - 하이버네이트 사용 불가, QueryDSL 사용 불가
+   - 따라서 spring.jpa.hibernate.ddl-auto=none 설정 필요
+   - 도메인에도 엔티티가 존재하고, Jooq가 만든 엔티티가 존재하는데, Jooq가 만든 엔티티를 사용한다. 
+     - starter-jooq에 포함된 빈 주입 
+     - private final DSLContext dslContext;
+
 
 ## 고민
 1. eq? equals? 뭔차이지 
