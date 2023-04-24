@@ -211,7 +211,119 @@
      - spring.jpa.properties.hibernate.format_sql=true
 
 3. 서비스 로직에 적용
+   1. ApiEventController를 직접 작성한 QueryDSL를 사용하는 코드로 변경 
+      - eventService의 getEvents를 사용하는데 세부 스펙이 다름 (Place 엔티티 -> Place 엔티티의 placeName)
+   2. EventController에 작성한 코드를 테스트하기 위한 임시 메서드 작성
+      - @Validated 적용
+   3. 뷰를 알맞게 변경
+      - 실제로 place 엔티티를 직접 접근하는게 아니라, plcaeName만 받는다.
+      - 타임리프 라이브러리를 이용해 날짜 형식 포멧팅
+   4. 테스트 코드에 반영
+      - 이벤트 뷰 데이터를 검색하면, 페이징된 결과를 출력하여 보여주는 서비스 테스트
+      - [GET] 이벤트 리스트 페이지 - 커스텀 데이터
+      - [GET] 이벤트 리스트 페이지 - 커스텀 데이터 + 검색 파라미터
+      - [GET] 이벤트 리스트 페이지 - 커스텀 데이터 + 검색 파라미터 (장소명, 이벤트명 잘못된 입력)")
+   5. 페이지 사이즈 변경 가능
+      - spring.data.web.pageable.default-page-size
+      - 기본값이 20
+```java
+        List<EventResponse> eventResponses = eventService.getEvents(
+                placeId,
+                eventName,
+                eventStatus,
+                eventStartDatetime,
+                eventEndDatetime
+        ).stream().map(EventResponse::from).toList();
 
+        return ApiDataResponse.of(eventResponses);
+```
+```java
+        return ApiDataResponse.of(List.of(EventResponse.of(
+                1L,
+                PlaceDto.of(
+                        1L,
+                        PlaceType.SPORTS,
+                        "배드민턴장",
+                        "서울시 가나구 다라동",
+                        "010-1111-2222",
+                        0,
+                        null,
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                ),
+                "오후 운동",
+                EventStatus.OPENED,
+                LocalDateTime.of(2021, 1, 1, 13, 0, 0),
+                LocalDateTime.of(2021, 1, 1, 16, 0, 0),
+                0,
+                24,
+                "마스크 꼭 착용하세요"
+        )));
+```
+```java
+public List<EventDto> getEvents(
+            Long placeId,
+            String eventName,
+            EventStatus eventStatus,
+            LocalDateTime eventStartDatetime,
+            LocalDateTime eventEndDatetime
+    ) {
+        try {
+            return null;
+        } catch (Exception e) {
+            throw new GeneralException(ErrorCode.DATA_ACCESS_ERROR, e);
+        }
+    }
+```
+
+```java
+    public Page<EventViewResponse> getEventViewResponse(
+            String placeName,
+            String eventName,
+            EventStatus eventStatus,
+            LocalDateTime eventStartDatetime,
+            LocalDateTime eventEndDatetime,
+            Pageable pageable
+    ) {
+        try {
+            return eventRepository.findEventViewPageBySearchParams(
+                    placeName,
+                    eventName,
+                    eventStatus,
+                    eventStartDatetime,
+                    eventEndDatetime,
+                    pageable
+            );
+        } catch (Exception e) {
+            throw new GeneralException(ErrorCode.DATA_ACCESS_ERROR, e);
+        }
+    }
+```
+```java
+    @GetMapping("/custom")
+    public ModelAndView customEvents(
+            @Size(min = 2) String placeName,
+            @Size(min = 2) String eventName,
+            EventStatus eventStatus,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime eventStartDatetime,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime eventEndDatetime,
+            Pageable pageable
+    ) {
+        Map<String, Object> map = new HashMap<>();
+        Page<EventViewResponse> events = eventService.getEventViewResponse(
+                placeName,
+                eventName,
+                eventStatus,
+                eventStartDatetime,
+                eventEndDatetime,
+                pageable
+        );
+
+        map.put("events", events);
+
+        return new ModelAndView("event/index", map);
+    }
+```
 
 ## 고민
 1. eq? equals? 뭔차이지 
