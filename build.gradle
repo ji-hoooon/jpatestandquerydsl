@@ -79,6 +79,7 @@ clean {
 //: gradle groovy 레퍼런스 설정
 def generatedJooq = 'src/main/generated-jooq'
 
+
 jooq {
     //extra property에 접근하기 위한 gradle 문법
     version = project.jooqVersion

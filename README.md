@@ -62,7 +62,14 @@
         - 복잡한 페이징을 구현할 때에도 Pageable만 잘 만들어두면 쉽게 페이징 가능
 3. Jooq
     - DB 스키마를 자바 클래스로 바꿔주는 도구
-    - ORM 프레임워크가 아니며 SQL을 잘 활용하기 위한 도구로 JPA 함께 사용하면 좋다.
+    - ORM 프레임워크가 아니며 SQL을 잘 활용하기 위한 도구로 JPA와 함께 사용하기 어렵다. (이름 충돌 문제)
+    - 때문에 Spring Data JPA의 트랜잭션 연동이 불가능하다. (Jooq는 엔티티 매니저를 사용하지 않으므로)
+    - 즉 애플리케이션 레벨에서의 트랜잭션 관리가 어렵다. (Spring Dat JPA의 트랜잭션 관리 불가능, 즉 jooq를 통한 트랜잭션 관리만 가능)
+    - 스프링과 JooqAutoConfiguration으로만 연동이 가능 -> pageable 사용 불가능 -> sort를 직접 작성해야한다.
+    - 대신 잘 만든 스키마가 필요하다.
+    - 즉, 잘 만든 스키마가 있으면 QueryDSL이 아닌 Jooq를 이용해 동적쿼리를 작성할 수 있다.
+    - 운영시에도 바인딩 파라미터를 직접 알 수 있어서 문제를 직접 수행할 수 있는 장점이 있다. 
+    - QueryDSL의 경우 바인딩 파라미터를 trace하지 않는 이상 알 수 없다.
 
 ### QueryDSL 다루기
 1. Querydsl의 특징
@@ -325,7 +332,7 @@ public List<EventDto> getEvents(
 ```
 
 
-## Jooq
+## Jooq 다루기
 1. Jooq 설정
    - build.gradle
    - JooqConfig 
@@ -336,7 +343,20 @@ public List<EventDto> getEvents(
    - 도메인에도 엔티티가 존재하고, Jooq가 만든 엔티티가 존재하는데, Jooq가 만든 엔티티를 사용한다. 
      - starter-jooq에 포함된 빈 주입 
      - private final DSLContext dslContext;
-
+   - `orderBy()` 구현은 Jooq 기술 선택을 하지 않은 상태에선 구현이 어렵다.
+   ```java
+   orderBy(event.ID.asc())
+   pageable. getSort().getOrderFor("placeName").getProperty() //placeName
+   pageable. getSort().getOrderFor("placeName").getDirection() //asc
+   //order가 list로 있으므로 리플렉션으로 관련된 jooq 객체를 순회하면서 매칭해야한다.
+   ```
+   - Spring Data JPA 컬럼명을 `camelCase`로 쓰고 있는데 이를 `PASCAL_CASE`로 바꿔야 한다
+   - 조인 테이블이라면 무슨 테이블 컬럼인지 알 수 없다
+   - 컬럼 찾아내고 매칭하는 과정의 예외 처리도 해야 한다 
+   - 모든 것을 스프링 지원 없이 해내야 한다.
+   - gradle 플러그인에 DB정보가 build.gradle에 엉킬 가능성이 높다.
+   - JPA는 프로퍼티로 설정하지만, build.gradle로만 해야하므로, 굉장히 불편하고 어렵다.
+   - 스프링 부트나 Spring Data JPA와 함께 쓰기 어렵다.
 
 ## 고민
 1. eq? equals? 뭔차이지 
@@ -345,4 +365,12 @@ public List<EventDto> getEvents(
 - 첫 번째 코드는 JPQL에서 사용되는 문법
 - 두 번째 코드는 Java 객체 비교에 사용되는 문법
 
-     
+2. JPA와 함께 사용하기 적합한건 QueryDSL이고, JOOQ는 MyBatis와 함께 사용하는게 더 나아보이는데
+- JPA, QueryDSL, JOOQ, MyBatis는 모두 SQL 쿼리를 생성하고 실행하는 데 사용되는 자바 기반의 ORM(Object-Relational Mapping) 라이브러리 및 프레임워크입니다. 이러한 도구들은 각각의 장단점이 있으며, 적합한 사용 시나리오가 있습니다.
+- JPA는 ORM 기술 중 가장 널리 사용되는 기술 중 하나이며, 개발자가 데이터베이스 스키마를 직접 작성하지 않고도 객체 지향적인 방식으로 데이터베이스를 조작할 수 있도록 해줍니다. QueryDSL은 JPA와 함께 사용하기 적합한 라이브러리로, JPA의 Criteria API 보다 더 직관적이고 유연한 쿼리 작성이 가능합니다.
+- 반면에 JOOQ는 SQL 기반의 코드를 생성하여 타입 안정성과 성능을 보장합니다. JOOQ는 쿼리 작성 시 자동 완성 기능을 지원하므로 개발자는 오타나 잘못된 쿼리 문법으로 인한 버그를 줄일 수 있습니다. 또한, JOOQ는 MyBatis와 함께 사용할 때 더 나은 상호운용성을 제공합니다.
+
+- 따라서, JPA와 함께 사용하려면 QueryDSL을 사용하는 것이 좋습니다. 
+- QueryDSL은 JPA의 Criteria API의 한계를 극복하고, JPA에서 제공하지 않는 유연한 쿼리 작성이 가능하도록 지원하기 때문입니다.
+- JOOQ는 MyBatis와 함께 사용하여 SQL 기반의 코드를 생성하는 데 적합합니다. 
+- JOOQ는 타입 안정성과 성능을 보장하며, MyBatis와 함께 사용하면 더 나은 상호운용성을 제공합니다.
