@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Disabled("Jooq 테스트시엔 비활성화 필요")
+//@Disabled("Jooq 테스트시엔 비활성화 필요")
 @DisplayName("DB-이벤트")
 @DataJpaTest
 class EventRepositoryTest {
@@ -114,13 +114,12 @@ class EventRepositoryTest {
         Iterable<Event> events = eventRepository.findAll(new BooleanBuilder());
 
         //then
-        assertThat(events).hasSize(7);
-
+        assertThat(events).hasSize(27);
     }
 
     @DisplayName("이벤트 뷰 데이터를 검색 파라미터와 함께 조회하면, 조건에 맞는 데이터를 페이징 처리하여 리턴한다.")
     @Test
-    public void givenSearchParams_wehnFindingEventViewResponse_thenReturnsEventViewResponsePage_test() throws Exception{
+    void givenSearchParams_whenFindingEventViewPage_thenReturnsEventViewResponsePage() {
         //given
         //:Data.sql에 테스트할 데이터를 추가해놨다.
 
@@ -143,12 +142,13 @@ class EventRepositoryTest {
         assertThat(eventPage.getTotalElements()).isEqualTo(1);
         //총 요소의 수 1
         assertThat(eventPage.getContent().get(0))
-                .hasFieldOrPropertyWithValue("placeName","서울 배드민턴장")
-                .hasFieldOrPropertyWithValue("eventName","운동1")
-                .hasFieldOrPropertyWithValue("eventStatus",EventStatus.OPENED)
-                .hasFieldOrPropertyWithValue("eventStartDateTime",LocalDateTime.of(2021, 1, 1, 9, 0, 0))
-                .hasFieldOrPropertyWithValue("eventEndDateTime", LocalDateTime.of(2021, 1, 2, 12, 0, 0));
+                .hasFieldOrPropertyWithValue("placeName", "서울 배드민턴장")
+                .hasFieldOrPropertyWithValue("eventName", "운동1")
+                .hasFieldOrPropertyWithValue("eventStatus", EventStatus.OPENED)
+                .hasFieldOrPropertyWithValue("eventStartDatetime", LocalDateTime.of(2021, 1, 1, 9, 0, 0))
+                .hasFieldOrPropertyWithValue("eventEndDatetime", LocalDateTime.of(2021, 1, 1, 12, 0, 0));
     }
+
 
 
     @DisplayName("이벤트 뷰 데이터 검색어에 따른 조회 결과가 없으면, 빈 데이터를 페이징 정보와 함께 리턴한다.")
@@ -206,5 +206,20 @@ class EventRepositoryTest {
 
         // Then
         assertThat(t).isInstanceOf(InvalidDataAccessApiUsageException.class);
+    }
+
+    //EAGER 사용하는 경우 독립적으로 동작하는지 테스트
+    //: findAll() 테스트 -> 반드시 Join을 보장하지 않는다.
+
+    @Test
+    public void eagerJoinTest_test() throws Exception{
+        //given
+
+
+        //when
+        List<Event> list = eventRepository.findAll();
+
+        //then
+
     }
 }

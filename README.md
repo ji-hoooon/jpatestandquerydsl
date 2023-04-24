@@ -356,7 +356,141 @@ public List<EventDto> getEvents(
    - 모든 것을 스프링 지원 없이 해내야 한다.
    - gradle 플러그인에 DB정보가 build.gradle에 엉킬 가능성이 높다.
    - JPA는 프로퍼티로 설정하지만, build.gradle로만 해야하므로, 굉장히 불편하고 어렵다.
-   - 스프링 부트나 Spring Data JPA와 함께 쓰기 어렵다.
+   - 스프링 부트나 Spring Data JPA와 레퍼런스도 적고 호환성이 떨어지기 때문에 함께 쓰기 어렵다.
+
+## Fetch와 N+1 문제
+
+1. Fetch
+   - 애플리케이션이 DB로부터 데이터를 가져오는 것
+   - DB에 통신하는 것에는 네트워크 I/O 비용, 데이터 크기에 대한 비용이 소모된다.
+2. eager fetch
+   - 프로그램 코드가 쿼리를 날리는 시점에 데이터를 즉시 가져오기
+   - 쿼리 한번 -> 데이터 크기 비용 많음
+   ```sql
+   select a.id from A a inner join B b on a.b_id = b.id
+   ```
+3. lazy fetch
+   - 가져오려는 데이터를 애플리케이션에서 실제로 접근할 때 가져오기
+   - 쿼리 두번 -> 네트워크 I/O 비용 많음
+   - 잘못 사용하면 데이터 접근 에러 발생 (LazyInitializationException)
+     - OSIV 패턴을 사용할 때에도 발생 가능한데,
+     - Entity Manager는 일반적으로 Transaction 범위 내에서 사용되어야 하지만
+   Transaction이 종료되면 영속성 컨텍스트도 닫히게 된다. 
+     - 만약 Lazy Loading 프록시 객체에 접근하고자 하는 시점에 영속성 컨텍스트가 닫혀버리면 발생
+   ```sql
+   select a.id from A; (select b from B b where b.id=?)
+   ```
+4. JPA의 연관관계 기본 FETCH 전략
+   - 효율적인 전략이 기본 Fetch 전략 
+      - @OneToOne : EAGER
+      - @ManyToOne : EAGER
+      - @OneToMany : LAZY
+      - @ManyToMany : LAZY
+   - 효율성 -> 자신의 엔티티 관점에서 상대방 엔티티를 알고 있는지 여부
+     - 알고 있다. -> EAGER, 모른다 -> LAZY
+     - 자식 입장에서 부모는 필연적이지만, 부모 입장에서는 자식을 반드시 알아야하는 게 아니므로
+     - 데이터에 접근할 가능성이 낮으면 LAZY, 데이터에 접근할 가능성이 높으면 EAGER
+5. 효율성을 따져서 데이터가 어느 쪽으로 더 자주 사용될 것인가 예측
+   - LAZY 사용하는 경우
+     - 연관 관계가 있는 엔티티에서 자식 엔티티만 가져오는 경우
+     - JOIN을 의식하지 않지만, LAZY 세팅이 후속 쿼리 발생 방지를 보장하는 건 아니다.
+   ```java
+   @Setter
+    //    @ManyToOne(optional = false) // 기본전략은 Eager
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    //이벤트 가져올때 필요없으면 안 가져온다.
+    //꼭 필요할 때 가져온다. -> Lazy Fetch 쿼리 발생
+    private Place place;
+     ```
+   - EAGER 사용하는 경우 (기본적으로는 독립적인 쿼리 수행)
+     - 연관관계 엔티티를 무조건 다 가져오는 경우
+     - JOIN을 사용해야한다고 의식하는 상황 -> JOIN 동작을 보장하는 것은 아니다. -> findAll()
+     - JPQL을 직접 작성해 영속성 컨텍스트에 JOIN을 알린다. -> querydsl
+     - inQuery 옵션을 켜놓으면 inQuery로 발생
+   ```sql
+       select
+        place0_.id as id1_3_0_,
+        place0_.address as address2_3_0_,
+        place0_.capacity as capacity3_3_0_,
+        place0_.created_at as created_4_3_0_,
+        place0_.memo as memo5_3_0_,
+        place0_.modified_at as modified6_3_0_,
+        place0_.phone_number as phone_nu7_3_0_,
+        place0_.place_name as place_na8_3_0_,
+        place0_.place_type as place_ty9_3_0_ 
+    from
+        place place0_ 
+    where
+        place0_.id in (
+            ?, ?, ?
+        )
+   ```
+   - inQuery 옵션 해제 -> 쿼리 4번 발생
+   - -> eager fetch지만 JOIN을 수행하지 않는다. -> 매우 비효율적인 쿼리 발생가능
+     - inQuery란
+       - 데이터베이스에 대한 쿼리를 객체 지향적인 방식으로 작성하는 HQL에서 제공하는 옵션으로 IN절 사용시 적용
+       - IN 절은 주어진 값들 중 하나와 일치하는 결과를 반환하는 쿼리를 작성할 때 사용 
+       - IN 절에 지정된 값들을 한 번에 가져오는 대신, 지정된 배치 크기만큼의 값들을 가져와서 쿼리를 실행한다. 
+       - 따라서 대량의 데이터를 처리할 때, inQuery 옵션을 사용하면 성능이 향상
+   ```sql
+       select
+        event0_.id as id1_2_,
+        event0_.capacity as capacity2_2_,
+        event0_.created_at as created_3_2_,
+        event0_.current_number_of_people as current_4_2_,
+        event0_.event_end_datetime as event_en5_2_,
+        event0_.event_name as event_na6_2_,
+        event0_.event_start_datetime as event_st7_2_,
+        event0_.event_status as event_st8_2_,
+        event0_.memo as memo9_2_,
+        event0_.modified_at as modifie10_2_,
+        event0_.place_id as place_i11_2_ 
+    from
+        event event0_
+       select
+        place0_.id as id1_3_0_,
+        place0_.address as address2_3_0_,
+        place0_.capacity as capacity3_3_0_,
+        place0_.created_at as created_4_3_0_,
+        place0_.memo as memo5_3_0_,
+        place0_.modified_at as modified6_3_0_,
+        place0_.phone_number as phone_nu7_3_0_,
+        place0_.place_name as place_na8_3_0_,
+        place0_.place_type as place_ty9_3_0_ 
+    from
+        place place0_ 
+    where
+        place0_.id=?
+       select
+        place0_.id as id1_3_0_,
+        place0_.address as address2_3_0_,
+        place0_.capacity as capacity3_3_0_,
+        place0_.created_at as created_4_3_0_,
+        place0_.memo as memo5_3_0_,
+        place0_.modified_at as modified6_3_0_,
+        place0_.phone_number as phone_nu7_3_0_,
+        place0_.place_name as place_na8_3_0_,
+        place0_.place_type as place_ty9_3_0_ 
+    from
+        place place0_ 
+    where
+        place0_.id=?
+       select
+        place0_.id as id1_3_0_,
+        place0_.address as address2_3_0_,
+        place0_.capacity as capacity3_3_0_,
+        place0_.created_at as created_4_3_0_,
+        place0_.memo as memo5_3_0_,
+        place0_.modified_at as modified6_3_0_,
+        place0_.phone_number as phone_nu7_3_0_,
+        place0_.place_name as place_na8_3_0_,
+        place0_.place_type as place_ty9_3_0_ 
+    from
+        place place0_ 
+    where
+        place0_.id=?
+   ```
+5. N+1문제
 
 ## 고민
 1. eq? equals? 뭔차이지 

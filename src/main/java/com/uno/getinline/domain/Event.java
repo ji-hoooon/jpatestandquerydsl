@@ -32,7 +32,10 @@ public class Event {
 
 
     @Setter
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false) // 기본전략은 Eager
+//    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    //이벤트 가져올때 필요없으면 안 가져온다.
+    //꼭 필요할 때 가져온다. -> Lazy Fetch 쿼리 발생
     private Place place;
 
     @Setter
